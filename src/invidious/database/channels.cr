@@ -145,13 +145,17 @@ module Invidious::Database::ChannelVideos
   end
 
   def select_popular_videos : Array(ChannelVideo)
+    decay = (ENV["POPULAR_DECAY"]? || "0.00002").to_f
+    power = (ENV["POPULAR_POWER"]? || "0.8").to_f
+    view_offset = (ENV["POPULAR_VIEW_OFFSET"]? || "0").to_i
+
+
     request = <<-SQL
       SELECT *
       FROM channel_videos
-      WHERE views > 5000
       ORDER BY (
-        LOG(GREATEST(views, 1)) *
-        EXP(-0.00001 * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
+        POW(LOG(GREATEST(views + #{view_offset}, 1)), #{power}) *
+        EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
       ) DESC
       LIMIT 60
     SQL
