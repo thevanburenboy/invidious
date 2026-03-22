@@ -146,11 +146,14 @@ module Invidious::Database::ChannelVideos
 
   def select_popular_videos : Array(ChannelVideo)
     request = <<-SQL
-      SELECT DISTINCT ON (ucid) *
+      SELECT *
       FROM channel_videos
-      WHERE ucid IN (SELECT channel FROM (SELECT UNNEST(subscriptions) AS channel FROM users) AS d
-      GROUP BY channel ORDER BY COUNT(channel) DESC LIMIT 40)
-      ORDER BY ucid, published DESC
+      WHERE views > 5000
+      ORDER BY (
+        LOG(GREATEST(views, 1)) *
+        EXP(-0.00001 * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
+      ) DESC
+      LIMIT 60
     SQL
 
     PG_DB.query_all(request, as: ChannelVideo)
