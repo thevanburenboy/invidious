@@ -148,7 +148,7 @@ module Invidious::Database::ChannelVideos
     decay = (ENV["POPULAR_DECAY"]? || "0.00002").to_f
     power = (ENV["POPULAR_POWER"]? || "0.8").to_f
     view_offset = (ENV["POPULAR_VIEW_OFFSET"]? || "0").to_i
-
+    limit = (ENV["POPULAR_LIMIT"]? || "60").to_i
 
     request = <<-SQL
       SELECT *
@@ -157,7 +157,7 @@ module Invidious::Database::ChannelVideos
         POW(LOG(GREATEST(views + #{view_offset}, 1)), #{power}) *
         EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
       ) DESC
-      LIMIT 60
+      LIMIT #{limit}
     SQL
 
     PG_DB.query_all(request, as: ChannelVideo)
