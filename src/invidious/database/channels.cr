@@ -153,6 +153,9 @@ module Invidious::Database::ChannelVideos
     request = <<-SQL
       SELECT *
       FROM channel_videos
+      WHERE ucid IN (
+        SELECT DISTINCT UNNEST(subscriptions) FROM users
+      )
       ORDER BY (
         POW(LOG(GREATEST(views + #{view_offset}, 1)), #{power}) *
         EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
