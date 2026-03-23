@@ -8,8 +8,8 @@ class Invidious::Jobs::PullPopularVideosJob < Invidious::Jobs::BaseJob
   def begin
     loop do
       videos = Invidious::Database::ChannelVideos.select_popular_videos
-        .sort_by!(&.published)
-        .reverse!
+#        .sort_by!(&.published)
+#        .reverse!
 
       POPULAR_VIDEOS.set(videos)
 
