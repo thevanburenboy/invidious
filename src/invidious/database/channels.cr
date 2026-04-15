@@ -156,12 +156,17 @@ module Invidious::Database::ChannelVideos
       WITH user_stats AS (
         SELECT COUNT(*) AS total_users FROM users
       ),
+      subscription_expanded AS (
+        SELECT unnest(subscriptions) AS ucid
+        FROM users
+      ),
       channel_stats AS (
-        SELECT COUNT(*) AS total_channels FROM channels
+        SELECT COUNT(DISTINCT ucid)::float AS total_channels
+        FROM subscription_expanded
       ),
       subscription_stats AS (
-        SELECT SUM(cardinality(subscriptions))::float AS total_subs
-        FROM users
+        SELECT COUNT(*)::float AS total_subs
+        FROM subscription_expanded
       ),
       community AS (
         SELECT
@@ -172,9 +177,9 @@ module Invidious::Database::ChannelVideos
       ),
       channel_affinity AS (
         SELECT 
-          unnest(subscriptions) AS ucid,
+          ucid,
           COUNT(*)::float AS sub_count
-        FROM users
+        FROM subscription_expanded
         GROUP BY ucid
       )
 
