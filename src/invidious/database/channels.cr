@@ -149,16 +149,37 @@ module Invidious::Database::ChannelVideos
     power = (ENV["POPULAR_POWER"]? || "0.8").to_f
     view_offset = (ENV["POPULAR_VIEW_OFFSET"]? || "0").to_i
     limit = (ENV["POPULAR_LIMIT"]? || "60").to_i
+    community_power = (ENV["POPULAR_COMMUNITY_POWER"]? || "2").to_f
 
     request = <<-SQL
-      SELECT *
-      FROM channel_videos
-      WHERE ucid IN (
+      WITH user_stats AS (
+        SELECT COUNT(*) AS total_users FROM users
+      ),
+      channel_affinity AS (
+        SELECT 
+          unnest(subscriptions) AS ucid,
+          COUNT(*)::float AS sub_count
+        FROM users
+        GROUP BY ucid
+      )
+
+      SELECT v.*
+      FROM channel_videos v
+      JOIN user_stats us ON TRUE
+      LEFT JOIN channel_affinity ca ON ca.ucid = v.ucid
+      WHERE v.ucid IN (
         SELECT DISTINCT UNNEST(subscriptions) FROM users
       )
       ORDER BY (
-        POW(LOG(GREATEST(views + #{view_offset}, 1)), #{power}) *
-        EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - published)) / 60)
+        (
+          POW(LOG(GREATEST(v.views + #{view_offset}, 1)), #{power}) *
+          EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - v.published)) / 60)
+        )
+        *
+        POW(
+          1 + (COALESCE(ca.sub_count, 0) / us.total_users),
+          #{community_power}
+        )
       ) DESC
       LIMIT #{limit}
     SQL
