@@ -194,7 +194,7 @@ module Invidious::Database::ChannelVideos
       ORDER BY (
         (
           POW(LOG(GREATEST(v.views + #{view_offset}, 1)), #{power}) *
-          EXP(-#{decay} * EXTRACT(EPOCH FROM (NOW() - v.published)) / 60)
+          EXP(-#{decay} * GREATEST(EXTRACT(EPOCH FROM (NOW() - v.published)) / 60, 0))
         )
         *
         POW(
