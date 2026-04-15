@@ -150,10 +150,25 @@ module Invidious::Database::ChannelVideos
     view_offset = (ENV["POPULAR_VIEW_OFFSET"]? || "0").to_i
     limit = (ENV["POPULAR_LIMIT"]? || "60").to_i
     community_power = (ENV["POPULAR_COMMUNITY_POWER"]? || "2").to_f
+    community_prior = (ENV["POPULAR_COMMUNITY_PRIOR"]? || "5").to_f
 
     request = <<-SQL
       WITH user_stats AS (
         SELECT COUNT(*) AS total_users FROM users
+      ),
+      channel_stats AS (
+        SELECT COUNT(*) AS total_channels FROM channels
+      ),
+      subscription_stats AS (
+        SELECT SUM(cardinality(subscriptions))::float AS total_subs
+        FROM users
+      ),
+      community AS (
+        SELECT
+          (subscription_stats.total_subs /
+          (user_stats.total_users * channel_stats.total_channels)
+          ) AS base_rate
+        FROM user_stats, channel_stats, subscription_stats
       ),
       channel_affinity AS (
         SELECT 
@@ -166,6 +181,7 @@ module Invidious::Database::ChannelVideos
       SELECT v.*
       FROM channel_videos v
       JOIN user_stats us ON TRUE
+      JOIN community c ON TRUE
       LEFT JOIN channel_affinity ca ON ca.ucid = v.ucid
       WHERE v.ucid IN (
         SELECT DISTINCT UNNEST(subscriptions) FROM users
@@ -177,7 +193,12 @@ module Invidious::Database::ChannelVideos
         )
         *
         POW(
-          1 + (COALESCE(ca.sub_count, 0) / us.total_users),
+          1 + (
+            (
+              COALESCE(ca.sub_count, 0) + #{community_prior} * c.base_rate
+            ) /
+            (us.total_users + #{community_prior})
+          ),
           #{community_power}
         )
       ) DESC
