@@ -74,23 +74,23 @@ jobs:
           build-args: |
             "release=1"
 
-combine-multiarch-images:
-  needs: release
-  runs-on: ubuntu-latest
-
-  steps:
-    - name: Login to GHCR
-      uses: docker/login-action@v4
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Create and push manifest
-      uses: int128/docker-manifest-create-action@v2.21.0
-      with:
-        push: true
-        tags: ghcr.io/thevanburenboy/invidious:master
-        sources: |
-          ghcr.io/thevanburenboy/invidious:master
-          ghcr.io/thevanburenboy/invidious:master-arm64
+  combine-multiarch-images:
+    needs: release
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Create and push manifest
+        uses: int128/docker-manifest-create-action@v2.21.0
+        with:
+          push: true
+          tags: ghcr.io/thevanburenboy/invidious:master
+          sources: |
+            ghcr.io/thevanburenboy/invidious:master
+            ghcr.io/thevanburenboy/invidious:master-arm64
