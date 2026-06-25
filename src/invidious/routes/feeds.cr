@@ -283,6 +283,11 @@ module Invidious::Routes::Feeds
       if playlist = Invidious::Database::Playlists.select(id: plid)
         videos = get_playlist_videos(playlist, offset: 0)
 
+        user = env.get?("user").try &.as(User)
+        if !playlist || playlist.privacy.private? && playlist.author != user.try &.email
+          return error_atom(404, "Playlist does not exist.")
+        end
+
         return XML.build(indent: "  ", encoding: "UTF-8") do |xml|
           xml.element("feed", "xmlns:yt": "http://www.youtube.com/xml/schemas/2015",
             "xmlns:media": "http://search.yahoo.com/mrss/", xmlns: "http://www.w3.org/2005/Atom",
@@ -320,7 +325,7 @@ module Invidious::Routes::Feeds
         case attribute.name
         when "url", "href"
           request_target = URI.parse(node[attribute.name]).request_target
-          query_string_opt = request_target.starts_with?("/watch?v=") ? "&#{params}" : ""
+          query_string_opt = request_target.starts_with?("/watch?v=") ? ("&#{params}" if !params.empty?) : ""
           node[attribute.name] = "#{HOST_URL}#{request_target}#{query_string_opt}"
         else nil # Skip
         end
